@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UparGrade Studio - Hojas de Respuesta ICFES y Escáner OMR</title>
+
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Hoja de estilos externa -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- Estilo dinámico para orientación de página al imprimir -->
+    <style id="dynamicPrintPageStyle"></style>
+</head>
+
+<body>
+
+    <!-- Contenedor de Notificaciones Toast -->
+    <div id="toastContainer" class="toast-container no-print"></div>
+
+    <!-- ==================== BARRA SUPERIOR ESTILO STUDIO ==================== -->
+    <header class="app-header no-print">
+        <div class="header-container">
+            <!-- Logo y Título -->
+            <div class="brand-group">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-qrcode"></i>
+                </div>
+                <div>
+                    <div class="brand-title-row">
+                        <h1>UparGrade <span class="text-indigo">Studio</span></h1>
+                        <span id="uiBadgeOMR" class="badge-pill">ICFES & OMR</span>
+                    </div>
+                    <p id="uiMainSubtitle">Generador de hojas de respuesta y calificación óptica automatizada</p>
+                </div>
+            </div>
+
+            <!-- Navegación Principal SPA -->
+            <nav class="nav-tabs">
+                <button class="nav-tab active" data-view="exams" onclick="switchView('exams')">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span id="uiNavExams">1. Examen y Clave</span>
+                </button>
+                <button class="nav-tab" data-view="sheet" onclick="switchView('sheet')">
+                    <i class="fa-solid fa-file-lines"></i>
+                    <span id="uiNavSheet">2. Hoja ICFES</span>
+                </button>
+                <button class="nav-tab" data-view="scanner" onclick="switchView('scanner')">
+                    <i class="fa-solid fa-camera"></i>
+                    <span id="uiNavScanner">3. Escáner OMR</span>
+                </button>
+                <button class="nav-tab" data-view="results" onclick="switchView('results')">
+                    <i class="fa-solid fa-chart-column"></i>
+                    <span id="uiNavResults">4. Calificaciones</span>
+                </button>
+            </nav>
+
+            <!-- Utilidades Globales (Idioma, Tema, Impresión Rápida) -->
+            <div class="header-utilities">
+                <button id="btnLangToggle" class="btn-utility" title="Cambiar Idioma / Switch Language">
+                    <i class="fa-solid fa-globe text-indigo"></i>
+                    <span id="langLabel">ES</span>
+                </button>
+
+                <button id="btnThemeToggle" class="btn-utility btn-icon-only" title="Cambiar tema Claro / Oscuro">
+                    <i id="themeIcon" class="fa-solid fa-moon text-indigo"></i>
+                </button>
+
+                <button class="btn-utility btn-print-top" onclick="printAnswerSheet()">
+                    <i class="fa-solid fa-print text-indigo"></i>
+                    <span id="uiBtnPrintTop" class="hide-sm">Imprimir Hoja</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==================== CONTENEDOR PRINCIPAL DE VISTAS ==================== -->
+    <main class="main-container">
+
+        <!-- =====================================================================
+             VISTA 1: CREADOR DE EXAMEN Y CLAVE DE RESPUESTAS (ANSWER KEY)
+             ===================================================================== -->
+        <section id="viewExams" class="view-section active no-print">
+            <div class="exams-grid">
+
+                <!-- Columna Izquierda: Configuración del Examen y Bancos Guardados -->
+                <div class="studio-card">
+                    <div class="card-section-header">
+                        <h2><i class="fa-solid fa-file-signature text-indigo"></i> <span id="uiExamConfigTitle">Configuración del Examen</span></h2>
+                        <button class="btn-mini" onclick="createNewBlankExam()">
+                            <i class="fa-solid fa-plus"></i> <span id="uiBtnNewExam">Nuevo</span>
+                        </button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="examTitleInput" id="uiLabelExamTitle">Nombre del Examen / Evaluación</label>
+                        <div class="input-with-btn">
+                            <input type="text" id="examTitleInput" value="Simulacro ICFES - Tecnología 601" oninput="syncCurrentExamMeta()">
+                            <button class="btn-primary-md" onclick="saveCurrentExam()">
+                                <i class="fa-solid fa-floppy-disk"></i> <span id="uiBtnSaveExam">Guardar</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label for="examCourseInput" id="uiLabelCourse">Grado / Asignatura</label>
+                            <input type="text" id="examCourseInput" value="601 - Informática" oninput="syncCurrentExamMeta()">
+                        </div>
+                        <div class="form-group">
+                            <label for="examQuestionsCount" id="uiLabelQCount">N° de Preguntas</label>
+                            <select id="examQuestionsCount" onchange="handleQuestionCountChange(this.value)">
+                                <option value="10">10 preguntas</option>
+                                <option value="15">15 preguntas</option>
+                                <option value="20" selected>20 preguntas</option>
+                                <option value="25">25 preguntas</option>
+                                <option value="30">30 preguntas</option>
+                                <option value="40">40 preguntas</option>
+                                <option value="50">50 preguntas</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label for="examMaxGrade" id="uiLabelMaxGrade">Nota Máxima</label>
+                            <input type="number" id="examMaxGrade" value="5.0" step="0.1" min="1" max="1000" oninput="syncCurrentExamMeta()">
+                        </div>
+                        <div class="form-group">
+                            <label for="examMinGrade" id="uiLabelMinGrade">Nota Mínima</label>
+                            <input type="number" id="examMinGrade" value="1.0" step="0.1" min="0" max="100" oninput="syncCurrentExamMeta()">
+                        </div>
+                        <div class="form-group">
+                            <label for="examOptionsCount" id="uiLabelOptionsCount">Opciones</label>
+                            <select id="examOptionsCount" onchange="handleOptionsCountChange(this.value)">
+                                <option value="3">A, B, C (3)</option>
+                                <option value="4" selected>A, B, C, D (4)</option>
+                                <option value="5">A, B, C, D, E (5)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Tarjeta Resumen Matemático de Valor por Pregunta -->
+                    <div class="points-summary-banner">
+                        <div class="summary-metric">
+                            <span id="uiMetricValPerQ">Valor por cada acierto</span>
+                            <strong id="metricPointsPerQuestion" class="font-mono text-indigo">+0.25 pts</strong>
+                        </div>
+                        <div class="summary-metric">
+                            <span id="uiMetricPassing">Nota aprobatoria (60%)</span>
+                            <strong id="metricPassingGrade" class="font-mono text-emerald">3.00</strong>
+                        </div>
+                        <div class="summary-metric">
+                            <span id="uiMetricKeyStatus">Clave configurada</span>
+                            <strong id="metricKeyProgress" class="font-mono">20 / 20</strong>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Exámenes Guardados en el Navegador -->
+                    <div class="saved-exams-box">
+                        <div class="saved-header">
+                            <span><i class="fa-solid fa-folder-bookmark text-indigo"></i> <strong id="uiSavedExamsTitle">Mis Exámenes Guardados</strong></span>
+                            <span id="savedExamsBadge" class="badge-soft">0</span>
+                        </div>
+                        <div id="savedExamsList" class="saved-exams-list"></div>
+                        <div class="saved-footer-btns">
+                            <button class="btn-utility" onclick="exportAllDataJSON()">
+                                <i class="fa-solid fa-file-export text-indigo"></i> <span id="uiBtnExportJson">Exportar JSON</span>
+                            </button>
+                            <button class="btn-utility" onclick="document.getElementById('importJsonFile').click()">
+                                <i class="fa-solid fa-file-import text-indigo"></i> <span id="uiBtnImportJson">Importar JSON</span>
+                            </button>
+                            <input type="file" id="importJsonFile" accept=".json" class="hidden" onchange="handleImportJSON(event)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Matriz de Respuestas Correctas (Answer Key) -->
+                <div class="studio-card">
+                    <div class="card-section-header">
+                        <div>
+                            <h2><i class="fa-solid fa-key text-indigo"></i> <span id="uiAnswerKeyTitle">Clave de Respuestas Correctas</span></h2>
+                            <p class="text-muted-xs" id="uiAnswerKeySub">Marca la burbuja correcta para cada pregunta o pega una secuencia rápida.</p>
+                        </div>
+                        <div class="key-quick-actions">
+                            <button class="btn-mini" onclick="fillRandomKey()" title="Llenar aleatoriamente">
+                                <i class="fa-solid fa-shuffle"></i> <span id="uiBtnRandomKey">Aleatorio</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Barra de pegado rápido de clave (ej. ABCDABCD...) -->
+                    <div class="quick-key-bar">
+                        <input type="text" id="quickKeyStringInput" placeholder="Pegado rápido: ej. ABCDABCDAA..." class="font-mono">
+                        <button class="btn-utility" onclick="applyQuickKeyString()">
+                            <i class="fa-solid fa-bolt text-indigo"></i> <span id="uiBtnApplyPattern">Aplicar</span>
+                        </button>
+                    </div>
+
+                    <!-- Grilla de Burbujas de la Clave -->
+                    <div id="answerKeyGrid" class="answer-key-grid"></div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- =====================================================================
+             VISTA 2: GENERADOR DE HOJA DE RESPUESTAS TIPO ICFES (IMPRIMIBLE)
+             ===================================================================== -->
+        <section id="viewSheet" class="view-section">
+            <!-- Barra de Controles de Diseño de Hoja (Oculta al imprimir) -->
+            <div class="studio-card sheet-toolbar no-print">
+                <div class="toolbar-left">
+                    <h2><i class="fa-solid fa-print text-indigo"></i> <span id="uiSheetPreviewTitle">Vista Previa de Hoja OMR Tipo ICFES</span></h2>
+                    <p class="text-muted-xs" id="uiSheetPreviewSub">Elige entre el formato completo o el formato simplificado (hasta 6 hojas por página).</p>
+                </div>
+
+                <div class="toolbar-controls">
+                    <label class="inline-switch">
+                        <input type="checkbox" id="showTeacherKeyOnSheet" onchange="renderPrintableSheets()">
+                        <span id="uiLabelShowKeySheet">Hoja Guía Docente</span>
+                    </label>
+
+                    <!-- Selector de Estilo de Hoja: Completa vs Simplificada (Solo esencial) -->
+                    <select id="sheetStyleModeSelect" onchange="renderPrintableSheets()" title="Tipo de diseño de hoja">
+                        <option value="full" id="optStyleFull">Formato Completo ICFES</option>
+                        <option value="minimal" id="optStyleMinimal">Simplificada (Solo Esencial)</option>
+                    </select>
+
+                    <!-- Selector de Cantidad por Página (1 a 6) -->
+                    <select id="sheetPrintLayoutSelect" onchange="renderPrintableSheets()" title="Cantidad de formatos por página">
+                        <option value="1" id="optLayout1">1 por Hoja</option>
+                        <option value="2" id="optLayout2">2 por Hoja</option>
+                        <option value="4" id="optLayout4">4 por Hoja</option>
+                        <option value="6" id="optLayout6">6 por Hoja</option>
+                    </select>
+
+                    <!-- Selector de Orientación de Página -->
+                    <select id="sheetOrientationSelect" onchange="renderPrintableSheets()" title="Orientación de la hoja al imprimir">
+                        <option value="auto" id="optOrientAuto">Orientación: Automática</option>
+                        <option value="portrait" id="optOrientPortrait">Vertical (Portrait)</option>
+                        <option value="landscape" id="optOrientLandscape">Horizontal (Landscape)</option>
+                    </select>
+
+                    <button class="btn-utility" onclick="downloadSheetAsPNG()">
+                        <i class="fa-solid fa-image text-indigo"></i> <span id="uiBtnDownloadSheetPng">Descargar PNG</span>
+                    </button>
+
+                    <button class="btn-primary-md" onclick="window.print()">
+                        <i class="fa-solid fa-print"></i> <span id="uiBtnPrintSheetNow">Imprimir / Guardar PDF</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Contenedor de Páginas Imprimibles -->
+            <div id="printableAreaContainer" class="printable-area-container">
+                <!-- Generado dinámicamente por JS -->
+            </div>
+        </section>
+
+        <!-- =====================================================================
+             VISTA 3: ESCÁNER ÓPTICO OMR (CÁMARA EN VIVO + SUBIDA DE IMAGEN + AUDITORÍA)
+             ===================================================================== -->
+        <section id="viewScanner" class="view-section no-print">
+            <div class="scanner-grid">
+
+                <!-- Panel Izquierdo: Visor de Cámara / Imagen Escaneada con Malla OMR -->
+                <div class="studio-card">
+                    <div class="card-section-header">
+                        <div>
+                            <h2><i class="fa-solid fa-crosshairs text-indigo"></i> <span id="uiScannerTitle">Escáner Óptico de Hoja ICFES</span></h2>
+                            <p class="text-muted-xs" id="uiScannerSub">Alinea los 4 cuadros negros de las esquinas de la hoja o sube una foto/captura.</p>
+                        </div>
+                        <span id="scannerActiveExamBadge" class="badge-pill">Examen Activo</span>
+                    </div>
+
+                    <!-- Controles de Entrada del Escáner -->
+                    <div class="scanner-controls-bar">
+                        <button id="btnStartCamera" class="btn-primary-md" onclick="toggleCameraStream()">
+                            <i class="fa-solid fa-video"></i> <span id="uiBtnCameraToggle">Activar Cámara</span>
+                        </button>
+
+                        <button id="btnCaptureFrame" class="btn-emerald-md hidden" onclick="captureFromVideoAndScan()">
+                            <i class="fa-solid fa-camera-retro"></i> <span id="uiBtnCapturePhoto">Capturar y Calificar</span>
+                        </button>
+
+                        <button class="btn-utility" onclick="document.getElementById('uploadSheetInput').click()">
+                            <i class="fa-solid fa-upload text-indigo"></i> <span id="uiBtnUploadPhoto">Subir Foto de Hoja</span>
+                        </button>
+                        <input type="file" id="uploadSheetInput" accept="image/*" class="hidden" onchange="handleSheetImageUpload(event)">
+
+                        <button class="btn-utility" onclick="generateSimulatedStudentScan()" title="Genera una hoja rellenada de prueba para verificar el escáner">
+                            <i class="fa-solid fa-wand-magic-sparkles text-indigo"></i> <span id="uiBtnSimulateScan">Simular Hoja Llena</span>
+                        </button>
+                    </div>
+
+                    <!-- Ajuste de Sensibilidad Óptica (Umbral de grafito/tinta) -->
+                    <div class="sensitivity-bar">
+                        <label for="omrThresholdRange">
+                            <i class="fa-solid fa-sliders text-indigo"></i>
+                            <span id="uiLabelSensitivity">Sensibilidad de detección de lápiz/tinta:</span>
+                            <strong id="sensitivityValueLabel" class="font-mono">Media (38%)</strong>
+                        </label>
+                        <input type="range" id="omrThresholdRange" min="18" max="65" value="38" oninput="updateSensitivityLabel(this.value)" onchange="rescanCurrentCanvasImage()">
+                    </div>
+
+                    <!-- Escenario Visual: Video en vivo + Canvas de procesamiento OMR -->
+                    <div class="scanner-viewport-wrapper">
+                        <video id="scannerVideo" autoplay playsinline muted class="scanner-video hidden"></video>
+                        <div id="cameraGuideOverlay" class="camera-guide-overlay hidden">
+                            <div class="guide-corner tl"></div>
+                            <div class="guide-corner tr"></div>
+                            <div class="guide-corner bl"></div>
+                            <div class="guide-corner br"></div>
+                        </div>
+                        <canvas id="omrScannerCanvas" width="700" height="920" class="omr-scanner-canvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Panel Derecho: Resultado Inmediato, Calificación y Auditoría Manual -->
+                <div class="studio-card">
+                    <div class="card-section-header">
+                        <h2><i class="fa-solid fa-graduation-cap text-indigo"></i> <span id="uiScanResultTitle">Resultado de la Evaluación</span></h2>
+                        <span id="scanStatusBadge" class="badge-soft">Listo para escanear</span>
+                    </div>
+
+                    <!-- Tarjeta Gigante de Calificación -->
+                    <div class="score-hero-card">
+                        <div class="score-circle" id="scoreCircleBox">
+                            <span class="score-number font-mono" id="scannedFinalGrade">0.0</span>
+                            <span class="score-max font-mono" id="scannedMaxGradeLabel">/ 5.0</span>
+                        </div>
+
+                        <div class="score-stats-grid">
+                            <div class="stat-box correct">
+                                <span class="stat-label" id="uiStatCorrect">Correctas</span>
+                                <strong id="scannedCorrectCount" class="font-mono">0</strong>
+                            </div>
+                            <div class="stat-box wrong">
+                                <span class="stat-label" id="uiStatWrong">Incorrectas</span>
+                                <strong id="scannedWrongCount" class="font-mono">0</strong>
+                            </div>
+                            <div class="stat-box blank">
+                                <span class="stat-label" id="uiStatBlank">En Blanco / Doble</span>
+                                <strong id="scannedBlankCount" class="font-mono">0</strong>
+                            </div>
+                            <div class="stat-box pct">
+                                <span class="stat-label" id="uiStatPct">Porcentaje</span>
+                                <strong id="scannedPercentText" class="font-mono">0%</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Datos del Estudiante para Registrar la Nota -->
+                    <div class="form-row-2">
+                        <div class="form-group">
+                            <label for="scannedStudentName" id="uiLabelStudentName">Nombre del Estudiante</label>
+                            <input type="text" id="scannedStudentName" placeholder="Ej. Caroll Cuero - 601">
+                        </div>
+                        <div class="form-group">
+                            <label for="scannedStudentId" id="uiLabelStudentCode">Código / Documento (Opcional)</label>
+                            <input type="text" id="scannedStudentId" placeholder="Ej. 106599...">
+                        </div>
+                    </div>
+
+                    <button class="btn-primary-xl" onclick="saveScannedResultToGradebook()">
+                        <i class="fa-solid fa-check-double"></i>
+                        <span id="uiBtnSaveGrade">Registrar Calificación en Planilla</span>
+                    </button>
+
+                    <!-- Desglose Interactivo Pregunta por Pregunta (Permite corrección con 1 clic) -->
+                    <div class="audit-section">
+                        <div class="audit-header">
+                            <strong id="uiAuditTitle">Revisión y Corrección Rápida por Pregunta</strong>
+                            <span class="text-muted-xs" id="uiAuditHint">(Haz clic en una letra si deseas ajustar manualmente lo detectado)</span>
+                        </div>
+                        <div id="scannedAuditList" class="scanned-audit-list"></div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- =====================================================================
+             VISTA 4: PLANILLA DE CALIFICACIONES Y ESTADÍSTICAS DEL EXAMEN
+             ===================================================================== -->
+        <section id="viewResults" class="view-section no-print">
+            <div class="studio-card">
+                <div class="results-header-row">
+                    <div>
+                        <h2><i class="fa-solid fa-table-list text-indigo"></i> <span id="uiGradebookTitle">Planilla de Calificaciones</span></h2>
+                        <p class="text-muted-xs" id="uiGradebookSub">Registro histórico de hojas escaneadas con cálculo automático de promedio y exportación a Excel.</p>
+                    </div>
+
+                    <div class="results-actions">
+                        <select id="resultsExamFilter" onchange="renderGradebookTable()"></select>
+                        <input type="text" id="resultsStudentSearch" oninput="renderGradebookTable()" placeholder="Buscar estudiante...">
+                        
+                        <!-- Selector de separador CSV configurable -->
+                        <div class="csv-export-group">
+                            <select id="csvDelimiterSelect" title="Separador de columnas para Excel CSV">
+                                <option value=";" selected id="optSepSemicolon">Separador: Punto y coma ( ; )</option>
+                                <option value="," id="optSepComma">Separador: Coma ( , )</option>
+                                <option value="tab" id="optSepTab">Separador: Tabulación (Tab)</option>
+                                <option value="|" id="optSepPipe">Separador: Barra ( | )</option>
+                            </select>
+                            <button class="btn-utility" onclick="exportGradebookCSV()">
+                                <i class="fa-solid fa-file-csv text-emerald"></i> <span id="uiBtnExportCsv">Exportar Excel (.csv)</span>
+                            </button>
+                        </div>
+
+                        <button class="btn-danger-sm" onclick="clearGradebookForCurrentExam()">
+                            <i class="fa-regular fa-trash-can"></i> <span id="uiBtnClearGrades">Vaciar</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Resumen Estadístico del Curso -->
+                <div class="course-kpi-row">
+                    <div class="kpi-card">
+                        <span id="uiKpiTotal">Evaluados</span>
+                        <strong id="kpiTotalEvaluated" class="font-mono">0</strong>
+                    </div>
+                    <div class="kpi-card">
+                        <span id="uiKpiAvg">Promedio del Grupo</span>
+                        <strong id="kpiAverageGrade" class="font-mono text-indigo">0.00</strong>
+                    </div>
+                    <div class="kpi-card">
+                        <span id="uiKpiPassRate">Aprobados (≥ 60%)</span>
+                        <strong id="kpiPassRate" class="font-mono text-emerald">0%</strong>
+                    </div>
+                    <div class="kpi-card">
+                        <span id="uiKpiBest">Mejor Nota</span>
+                        <strong id="kpiHighestGrade" class="font-mono text-amber">0.00</strong>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="studio-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th id="thResStudent">Estudiante</th>
+                                <th id="thResCode">Código</th>
+                                <th id="thResExam">Examen</th>
+                                <th id="thResHits">Aciertos</th>
+                                <th id="thResPct">Porcentaje</th>
+                                <th id="thResGrade">Nota Final</th>
+                                <th id="thResDate">Fecha</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="gradebookTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Pie de Página -->
+    <footer class="app-footer no-print">
+        <p><strong>UparGrade Studio</strong> — Sistema de Evaluación Óptica Tipo ICFES • Creado por <a href="https://github.com/kevinluisfl" target="_blank">Kevin Luis Flórez Lozada (klfl)</a> 💻</p>
+    </footer>
+
+    <!-- Lógica principal modular -->
+    <script src="app.js"></script>
+</body>
+
+</html>
