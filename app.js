@@ -127,7 +127,14 @@ const I18N = {
         btnImportOverwrite: 'Sobrescribir todo',
         btnImportCancel: 'Cancelar',
         toastImportMerged: 'Datos sumados a tu lista actual correctamente',
-        toastImportOverwritten: 'Datos reemplazados por el archivo importado'
+        toastImportOverwritten: 'Datos reemplazados por el archivo importado',
+        modalClearAllTitle: '¿Vaciar TODA la planilla de calificaciones?',
+        modalClearAllDesc: (count) => `Tienes seleccionado <strong>Todos los Exámenes</strong>. Esta acción eliminará permanentemente los <strong>${count} registros</strong> guardados. ¿Deseas continuar?`,
+        modalClearExamTitle: '¿Vaciar calificaciones de este examen?',
+        modalClearExamDesc: (exam, count) => `Se eliminarán únicamente las <strong>${count} calificaciones</strong> registradas para el examen <strong>"${exam}"</strong> (las notas de los demás exámenes se conservarán).`,
+        btnConfirmClearGrades: 'Sí, vaciar registros',
+        toastClearedAllGrades: 'Se vació toda la planilla de calificaciones',
+        toastClearedExamGrades: (exam) => `Se vaciaron las calificaciones de "${exam}"`
     },
     en: {
         mainSubtitle: 'OMR answer sheet generator and automated optical grading',
@@ -238,7 +245,14 @@ const I18N = {
         btnImportOverwrite: 'Overwrite all',
         btnImportCancel: 'Cancel',
         toastImportMerged: 'Imported data merged with your existing list',
-        toastImportOverwritten: 'All data replaced by imported file'
+        toastImportOverwritten: 'All data replaced by imported file',
+        modalClearAllTitle: 'Clear the ENTIRE gradebook?',
+        modalClearAllDesc: (count) => `You have <strong>All Exams</strong> selected. This action will permanently delete all <strong>${count} records</strong>. Do you want to continue?`,
+        modalClearExamTitle: 'Clear grades for this exam?',
+        modalClearExamDesc: (exam, count) => `Only the <strong>${count} grades</strong> recorded for <strong>"${exam}"</strong> will be deleted (grades from other exams will be kept).`,
+        btnConfirmClearGrades: 'Yes, clear records',
+        toastClearedAllGrades: 'Entire gradebook cleared',
+        toastClearedExamGrades: (exam) => `Grades cleared for "${exam}"`
     }
 };
 
@@ -1236,10 +1250,60 @@ function deleteSingleResult(resId) {
 
 function clearGradebookForCurrentExam() {
     if (appState.results.length === 0) return;
-    appState.results = [];
-    saveResultsToStorage();
-    renderGradebookTable();
-    showToast('Planilla de calificaciones vaciada');
+
+    const filterSel = document.getElementById('resultsExamFilter');
+    const selectedExamTitle = filterSel ? filterSel.value : 'all';
+    const isAllSelected = !selectedExamTitle || selectedExamTitle === 'all';
+
+    // Contar cuántos registros se verán afectados según el filtro actual
+    const targetRecords = isAllSelected
+        ? appState.results
+        : appState.results.filter(r => r.examTitle === selectedExamTitle);
+
+    if (targetRecords.length === 0) return;
+
+    const titleText = isAllSelected
+        ? t('modalClearAllTitle')
+        : t('modalClearExamTitle');
+
+    const descHtml = isAllSelected
+        ? t('modalClearAllDesc')(targetRecords.length)
+        : t('modalClearExamDesc')(selectedExamTitle, targetRecords.length);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'upar-modal-overlay';
+    overlay.innerHTML = `
+        <div class="upar-modal-box">
+            <h3><i class="fa-solid fa-triangle-exclamation text-amber"></i> ${titleText}</h3>
+            <p>${descHtml}</p>
+            <div class="upar-modal-actions">
+                <button type="button" class="btn-utility" id="btnCancelClearGrades">
+                    ${t('btnImportCancel')}
+                </button>
+                <button type="button" class="btn-danger-sm" id="btnAcceptClearGrades">
+                    <i class="fa-regular fa-trash-can"></i> ${t('btnConfirmClearGrades')}
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#btnCancelClearGrades').onclick = () => {
+        overlay.remove();
+    };
+
+    overlay.querySelector('#btnAcceptClearGrades').onclick = () => {
+        overlay.remove();
+        if (isAllSelected) {
+            appState.results = [];
+            showToast(t('toastClearedAllGrades'), 'fa-trash-can');
+        } else {
+            appState.results = appState.results.filter(r => r.examTitle !== selectedExamTitle);
+            showToast(t('toastClearedExamGrades')(selectedExamTitle), 'fa-trash-can');
+        }
+        saveResultsToStorage();
+        renderGradebookTable();
+    };
 }
 
 function exportGradebookCSV() {

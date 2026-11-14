@@ -89,6 +89,16 @@ body {
     gap: 1rem;
 }
 
+.subnav-bar {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 0 1.25rem 0.7rem 1.25rem;
+    display: flex;
+    justify-content: center;
+    border-top: 1px solid var(--border);
+    padding-top: 0.6rem;
+}
+
 .brand-group {
     display: flex;
     align-items: center;

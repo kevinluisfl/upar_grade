@@ -26,6 +26,7 @@
 
     <!-- ==================== BARRA SUPERIOR ESTILO STUDIO ==================== -->
     <header class="app-header no-print">
+        <!-- Fila 1: Marca a la izquierda y Utilidades (Idioma, Tema, Imprimir) arriba a la derecha -->
         <div class="header-container">
             <!-- Logo y Título -->
             <div class="brand-group">
@@ -41,7 +42,26 @@
                 </div>
             </div>
 
-            <!-- Navegación Principal SPA -->
+            <!-- Utilidades Globales Arriba a la Derecha (Idioma, Tema, Impresión Rápida) -->
+            <div class="header-utilities">
+                <button id="btnLangToggle" class="btn-utility" title="Cambiar Idioma / Switch Language">
+                    <i class="fa-solid fa-globe text-indigo"></i>
+                    <span id="langLabel">ES</span>
+                </button>
+
+                <button id="btnThemeToggle" class="btn-utility btn-icon-only" title="Cambiar tema Claro / Oscuro">
+                    <i id="themeIcon" class="fa-solid fa-moon text-indigo"></i>
+                </button>
+
+                <button class="btn-utility btn-print-top" onclick="printAnswerSheet()">
+                    <i class="fa-solid fa-print text-indigo"></i>
+                    <span id="uiBtnPrintTop" class="hide-sm">Imprimir Hoja</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Fila 2: Menú de las 4 Opciones debajo y centrado -->
+        <div class="subnav-bar">
             <nav class="nav-tabs">
                 <button class="nav-tab active" data-view="exams" onclick="switchView('exams')">
                     <i class="fa-solid fa-sliders"></i>
@@ -60,23 +80,6 @@
                     <span id="uiNavResults">4. Calificaciones</span>
                 </button>
             </nav>
-
-            <!-- Utilidades Globales (Idioma, Tema, Impresión Rápida) -->
-            <div class="header-utilities">
-                <button id="btnLangToggle" class="btn-utility" title="Cambiar Idioma / Switch Language">
-                    <i class="fa-solid fa-globe text-indigo"></i>
-                    <span id="langLabel">ES</span>
-                </button>
-
-                <button id="btnThemeToggle" class="btn-utility btn-icon-only" title="Cambiar tema Claro / Oscuro">
-                    <i id="themeIcon" class="fa-solid fa-moon text-indigo"></i>
-                </button>
-
-                <button class="btn-utility btn-print-top" onclick="printAnswerSheet()">
-                    <i class="fa-solid fa-print text-indigo"></i>
-                    <span id="uiBtnPrintTop" class="hide-sm">Imprimir Hoja</span>
-                </button>
-            </div>
         </div>
     </header>
 
@@ -466,7 +469,7 @@
 
     <!-- Pie de Página -->
     <footer class="app-footer no-print">
-        <p><strong>UparGrade Studio</strong> — Sistema de Evaluación Óptica Tipo ICFES • Creado por <a href="https://github.com/kevinluisfl" target="_blank">Kevin Luis Flórez Lozada (klfl)</a> 💻</p>
+        <p><strong>UparGrade Studio</strong> — Creado por <a href="https://github.com/kevinluisfl" target="_blank">(klfl)</a> 💻</p>
     </footer>
 
     <!-- Lógica principal modular -->
