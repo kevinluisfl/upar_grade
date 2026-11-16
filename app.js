@@ -655,20 +655,59 @@ function loadSavedExam(examId) {
 }
 
 function deleteSavedExam(examId) {
-    appState.exams = appState.exams.filter(e => e.id !== examId);
+    const examToDelete = appState.exams.find(e => e.id === examId);
+    if (!examToDelete) return;
 
-    if (appState.exams.length === 0) {
-        createNewBlankExam();
-    } else if (appState.activeExam && appState.activeExam.id === examId) {
-        appState.activeExam = JSON.parse(JSON.stringify(appState.exams[0]));
-        populateExamFormInputs();
-        renderAnswerKeyGrid();
-    }
+    const isEn = appState.lang === 'en';
+    const titleText = isEn ? 'Delete saved exam?' : '¿Eliminar examen guardado?';
+    const safeTitle = String(examToDelete.title || '').replace(/</g, '<').replace(/>/g, '>');
+    const safeCourse = String(examToDelete.course || '').replace(/</g, '<').replace(/>/g, '>');
 
-    saveExamsToStorage();
-    renderSavedExamsList();
-    renderPrintableSheets();
-    showToast(t('toastExamDeleted'), 'fa-trash-can');
+    const descHtml = isEn
+        ? `Are you sure you want to delete <strong>"${safeTitle}"</strong> (${safeCourse} • ${examToDelete.questionCount} ${t('questionsShort')})?`
+        : `¿Seguro que deseas eliminar <strong>"${safeTitle}"</strong> (${safeCourse} • ${examToDelete.questionCount} ${t('questionsShort')})?`;
+
+    const confirmBtnText = isEn ? 'Yes, delete exam' : 'Sí, eliminar examen';
+
+    const overlay = document.createElement('div');
+    overlay.className = 'upar-modal-overlay';
+    overlay.innerHTML = `
+        <div class="upar-modal-box">
+            <h3><i class="fa-solid fa-triangle-exclamation text-amber"></i> ${titleText}</h3>
+            <p>${descHtml}</p>
+            <div class="upar-modal-actions">
+                <button type="button" class="btn-utility" id="btnCancelDeleteSavedExam">
+                    ${t('btnImportCancel')}
+                </button>
+                <button type="button" class="btn-danger-sm" id="btnConfirmDeleteSavedExam">
+                    <i class="fa-regular fa-trash-can"></i> ${confirmBtnText}
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#btnCancelDeleteSavedExam').onclick = () => {
+        overlay.remove();
+    };
+
+    overlay.querySelector('#btnConfirmDeleteSavedExam').onclick = () => {
+        overlay.remove();
+        appState.exams = appState.exams.filter(e => e.id !== examId);
+
+        if (appState.exams.length === 0) {
+            createNewBlankExam();
+        } else if (appState.activeExam && appState.activeExam.id === examId) {
+            appState.activeExam = JSON.parse(JSON.stringify(appState.exams[0]));
+            populateExamFormInputs();
+            renderAnswerKeyGrid();
+        }
+
+        saveExamsToStorage();
+        renderSavedExamsList();
+        renderPrintableSheets();
+        showToast(t('toastExamDeleted'), 'fa-trash-can');
+    };
 }
 
 function populateExamFormInputs() {
