@@ -27,6 +27,8 @@ const I18N = {
         btnPrintTop: 'Imprimir Hoja',
         examConfigTitle: 'Configuración del Examen',
         btnNewExam: 'Nuevo',
+        btnDuplicateExam: 'Duplicar',
+        toastExamDuplicated: 'Examen duplicado. Cambia el curso o nombre y pulsa Guardar',
         labelExamTitle: 'Nombre del Examen / Evaluación',
         btnSaveExam: 'Guardar',
         labelCourse: 'Grado / Asignatura',
@@ -39,7 +41,7 @@ const I18N = {
         labelMinGrade: 'Nota Mínima',
         labelOptionsCount: 'Opciones',
         metricValPerQ: 'Valor por cada acierto',
-        metricPassing: 'Nota aprobatoria (60%)',
+        metricPassing: 'Nota aprobatoria',
         metricKeyStatus: 'Clave configurada',
         savedExamsTitle: 'Mis Exámenes Guardados',
         emptySavedExams: 'No hay exámenes guardados aún.',
@@ -79,7 +81,7 @@ const I18N = {
         statBlank: 'En Blanco / Doble',
         statPct: 'Porcentaje',
         labelStudentName: 'Nombre del Estudiante',
-        placeholderStudentName: 'Ej. Caroll Cuero - 601',
+        placeholderStudentName: 'Ej. Caroll Lopez - 601',
         labelStudentCode: 'Código / Documento (Opcional)',
         placeholderStudentCode: 'Ej. 106599...',
         btnSaveGrade: 'Registrar Calificación en Planilla',
@@ -98,7 +100,7 @@ const I18N = {
         btnClearGrades: 'Vaciar',
         kpiTotal: 'Evaluados',
         kpiAvg: 'Promedio del Grupo',
-        kpiPassRate: 'Aprobados (≥ 60%)',
+        kpiPassRate: 'Aprobados',
         kpiBest: 'Mejor Nota',
         thResStudent: 'Estudiante',
         thResCode: 'Código',
@@ -145,6 +147,8 @@ const I18N = {
         btnPrintTop: 'Print Sheet',
         examConfigTitle: 'Exam Configuration',
         btnNewExam: 'New',
+        btnDuplicateExam: 'Duplicate',
+        toastExamDuplicated: 'Exam duplicated. Update course or title and click Save',
         labelExamTitle: 'Exam / Assessment Title',
         btnSaveExam: 'Save',
         labelCourse: 'Grade / Subject',
@@ -157,7 +161,7 @@ const I18N = {
         labelMinGrade: 'Min Grade',
         labelOptionsCount: 'Choices',
         metricValPerQ: 'Value per correct answer',
-        metricPassing: 'Passing grade (60%)',
+        metricPassing: 'Passing grade',
         metricKeyStatus: 'Configured key',
         savedExamsTitle: 'My Saved Exams',
         emptySavedExams: 'No saved exams yet.',
@@ -197,7 +201,7 @@ const I18N = {
         statBlank: 'Blank / Double',
         statPct: 'Percentage',
         labelStudentName: 'Student Name',
-        placeholderStudentName: 'E.g. Caroll Cuero - 601',
+        placeholderStudentName: 'E.g. Caroll Lopez - 601',
         labelStudentCode: 'Student ID (Optional)',
         placeholderStudentCode: 'E.g. 106599...',
         btnSaveGrade: 'Save Grade to Gradebook',
@@ -216,7 +220,7 @@ const I18N = {
         btnClearGrades: 'Clear',
         kpiTotal: 'Graded',
         kpiAvg: 'Class Average',
-        kpiPassRate: 'Pass Rate (≥ 60%)',
+        kpiPassRate: 'Pass Rate',
         kpiBest: 'Highest Grade',
         thResStudent: 'Student',
         thResCode: 'ID',
@@ -281,6 +285,8 @@ function t(key) {
    2. INICIALIZACIÓN Y GESTIÓN DE EXÁMENES (ANSWER KEY & ESCALA DE NOTA)
    -------------------------------------------------------------------------- */
 function createDefaultExam() {
+    const savedMax = parseFloat(localStorage.getItem('upargrade_default_max'));
+    const savedMin = parseFloat(localStorage.getItem('upargrade_default_min'));
     const defaultAnswers = {};
     for (let i = 1; i <= 20; i++) {
         defaultAnswers[i] = LETTERS[(i - 1) % 4];
@@ -291,8 +297,8 @@ function createDefaultExam() {
         course: '601 - Informática',
         questionCount: 20,
         optionsCount: 4,
-        maxGrade: 5.0,
-        minGrade: 1.0,
+        maxGrade: !isNaN(savedMax) ? savedMax : 10.0,
+        minGrade: !isNaN(savedMin) ? savedMin : 0.0,
         answers: defaultAnswers,
         updatedAt: new Date().toISOString().slice(0, 10)
     };
@@ -337,25 +343,65 @@ function syncCurrentExamMeta() {
     const ex = appState.activeExam;
     if (!ex) return;
 
+    const rawMax = parseFloat(document.getElementById('examMaxGrade').value);
+    const rawMin = parseFloat(document.getElementById('examMinGrade').value);
+
     ex.title = document.getElementById('examTitleInput').value.trim() || 'Examen sin título';
     ex.course = document.getElementById('examCourseInput').value.trim() || 'General';
-    ex.maxGrade = Math.max(1, parseFloat(document.getElementById('examMaxGrade').value) || 5.0);
-    ex.minGrade = Math.max(0, parseFloat(document.getElementById('examMinGrade').value) || 0.0);
+    ex.maxGrade = !isNaN(rawMax) && rawMax >= 1 ? rawMax : 10.0;
+    ex.minGrade = !isNaN(rawMin) && rawMin >= 0 ? rawMin : 0.0;
     if (ex.minGrade >= ex.maxGrade) ex.minGrade = 0;
 
+    // Guardar automáticamente como escala predeterminada global para futuros exámenes
+    localStorage.setItem('upargrade_default_max', ex.maxGrade);
+    localStorage.setItem('upargrade_default_min', ex.minGrade);
+
     updateExamMathSummary();
+}
+
+// 
+function getGlobalPassingRatio() {
+    const saved = parseFloat(localStorage.getItem('upargrade_passing_ratio'));
+    return !isNaN(saved) && saved > 0 && saved <= 1 ? saved : 0.6;
+}
+
+function updatePassingLabelsUI(pctInt) {
+    const baseText = appState.lang === 'en' ? 'Pass Rate' : 'Aprobados';
+    const fullText = `${baseText} (≥ ${pctInt}%)`;
+
+    // 1. Actualizar directamente el texto en pantalla (ID: uiKpiPassRate)
+    const el = document.getElementById('uiKpiPassRate');
+    if (el) el.textContent = fullText;
+
+    // 2. Actualizar el diccionario I18N para que al cambiar de idioma conserve el (≥ X%)
+    if (typeof I18N !== 'undefined') {
+        if (I18N.es) I18N.es.kpiPassRate = `Aprobados (≥ ${pctInt}%)`;
+        if (I18N.en) I18N.en.kpiPassRate = `Pass Rate (≥ ${pctInt}%)`;
+    }
 }
 
 function updateExamMathSummary() {
     const ex = appState.activeExam;
     if (!ex) return;
 
+    const ratio = getGlobalPassingRatio();
+    const pctInt = Math.round(ratio * 100);
     const range = ex.maxGrade - ex.minGrade;
     const valPerQuestion = range / ex.questionCount;
-    const passingGrade = ex.minGrade + range * 0.6;
+    const passingGrade = ex.minGrade + range * ratio;
 
     document.getElementById('metricPointsPerQuestion').textContent = `+${valPerQuestion.toFixed(3)} pts`;
-    document.getElementById('metricPassingGrade').textContent = passingGrade.toFixed(2);
+
+    const pctEl = document.getElementById('passingPctInput');
+    const gradeEl = document.getElementById('metricPassingGrade');
+    if (pctEl && document.activeElement !== pctEl) {
+        pctEl.textContent = pctInt;
+    }
+    if (gradeEl && document.activeElement !== gradeEl) {
+        gradeEl.textContent = passingGrade.toFixed(2);
+    }
+
+    updatePassingLabelsUI(pctInt);
 
     let configuredCount = 0;
     for (let i = 1; i <= ex.questionCount; i++) {
@@ -364,6 +410,68 @@ function updateExamMathSummary() {
     document.getElementById('metricKeyProgress').textContent = `${configuredCount} / ${ex.questionCount}`;
     document.getElementById('scannerActiveExamBadge').textContent = `${ex.title} (${ex.questionCount} Q)`;
 }
+
+function onPassingPctChange(rawText) {
+    const ex = appState.activeExam;
+    if (!ex) return;
+
+    let pct = parseFloat(String(rawText).replace(',', '.'));
+    if (isNaN(pct)) return;
+    pct = Math.max(1, Math.min(100, pct));
+
+    const ratio = pct / 100;
+    localStorage.setItem('upargrade_passing_ratio', ratio);
+
+    const range = ex.maxGrade - ex.minGrade;
+    const passingGrade = ex.minGrade + range * ratio;
+
+    const gradeEl = document.getElementById('metricPassingGrade');
+    if (gradeEl && document.activeElement !== gradeEl) {
+        gradeEl.textContent = passingGrade.toFixed(2);
+    }
+
+    updatePassingLabelsUI(Math.round(pct));
+    syncPassingAcrossAllResults();
+}
+
+function onPassingGradeChange(rawText) {
+    const ex = appState.activeExam;
+    if (!ex) return;
+
+    let grade = parseFloat(String(rawText).replace(',', '.'));
+    if (isNaN(grade)) return;
+
+    const range = ex.maxGrade - ex.minGrade;
+    if (range <= 0) return;
+
+    let ratio = (grade - ex.minGrade) / range;
+    ratio = Math.max(0.01, Math.min(1, ratio));
+    localStorage.setItem('upargrade_passing_ratio', ratio);
+
+    const pctInt = Math.round(ratio * 100);
+    const pctEl = document.getElementById('passingPctInput');
+    if (pctEl && document.activeElement !== pctEl) {
+        pctEl.textContent = pctInt;
+    }
+
+    updatePassingLabelsUI(pctInt);
+    syncPassingAcrossAllResults();
+}
+
+// Aplica la nueva nota aprobatoria a TODOS los registros guardados
+function syncPassingAcrossAllResults() {
+    const minPassPct = Math.round(getGlobalPassingRatio() * 100);
+
+    if (Array.isArray(appState.results)) {
+        appState.results.forEach(r => {
+            r.passed = (r.percentage ?? 0) >= minPassPct;
+        });
+        localStorage.setItem('upargrade_results_v1', JSON.stringify(appState.results));
+    }
+
+    if (typeof renderGradebookTable === 'function') renderGradebookTable();
+}
+//
 
 function handleQuestionCountChange(val) {
     const count = parseInt(val, 10) || 20;
@@ -458,14 +566,17 @@ function applyQuickKeyString() {
 }
 
 function createNewBlankExam() {
+    const savedMax = parseFloat(localStorage.getItem('upargrade_default_max'));
+    const savedMin = parseFloat(localStorage.getItem('upargrade_default_min'));
+
     const newEx = {
         id: 'exam_' + Date.now(),
         title: 'Nueva Evaluación ICFES',
         course: 'Grado 601',
         questionCount: 20,
         optionsCount: 4,
-        maxGrade: 5.0,
-        minGrade: 1.0,
+        maxGrade: !isNaN(savedMax) ? savedMax : 10.0,
+        minGrade: !isNaN(savedMin) ? savedMin : 0.0,
         answers: {},
         updatedAt: new Date().toISOString().slice(0, 10)
     };
@@ -476,12 +587,49 @@ function createNewBlankExam() {
     renderPrintableSheets();
 }
 
+function duplicateExamById(examId) {
+    const source = examId
+        ? appState.exams.find(e => e.id === examId)
+        : appState.activeExam;
+    if (!source) return;
+
+    const copySuffix = appState.lang === 'en' ? '(Copy)' : '(Copia)';
+    const duplicated = {
+        ...JSON.parse(JSON.stringify(source)),
+        id: 'exam_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        title: `${source.title} ${copySuffix}`,
+        updatedAt: new Date().toISOString().slice(0, 10)
+    };
+
+    appState.activeExam = duplicated;
+    appState.exams.unshift(JSON.parse(JSON.stringify(duplicated)));
+    saveExamsToStorage();
+
+    populateExamFormInputs();
+    renderAnswerKeyGrid();
+    renderSavedExamsList();
+    renderPrintableSheets();
+    drawReferenceSheetOnScannerCanvas(false);
+
+    const courseInput = document.getElementById('examCourseInput');
+    if (courseInput) courseInput.focus();
+
+    showToast(t('toastExamDuplicated'), 'fa-copy');
+}
+
+function duplicateCurrentExam() {
+    syncCurrentExamMeta();
+    if (!appState.activeExam) return;
+    duplicateExamById(null);
+}
+
 function saveCurrentExam() {
     syncCurrentExamMeta();
     const ex = appState.activeExam;
     ex.updatedAt = new Date().toISOString().slice(0, 10);
 
-    const idx = appState.exams.findIndex(item => item.id === ex.id || item.title.toLowerCase() === ex.title.toLowerCase());
+    // const idx = appState.exams.findIndex(item => item.id === ex.id || item.title.toLowerCase() === ex.title.toLowerCase());
+    const idx = appState.exams.findIndex(item => item.id === ex.id);
     const clone = JSON.parse(JSON.stringify(ex));
     if (idx >= 0) {
         appState.exams[idx] = clone;
@@ -551,10 +699,13 @@ function renderSavedExamsList() {
                 <p>${ex.course} • ${ex.questionCount} ${t('questionsShort')} (${ex.optionsCount} ${t('optionsShort')}) • ${t('scaleWord')} ${ex.minGrade} - ${ex.maxGrade}</p>
             </div>
             <div style="display:flex; gap:0.35rem;">
-                <button type="button" class="btn-mini" onclick="loadSavedExam('${ex.id}')">
+                <button type="button" class="btn-mini" onclick="loadSavedExam('${ex.id}')" title="Abrir">
                     <i class="fa-regular fa-folder-open"></i>
                 </button>
-                <button type="button" class="btn-mini-danger" onclick="deleteSavedExam('${ex.id}')">
+                <button type="button" class="btn-mini" onclick="duplicateExamById('${ex.id}')" title="Duplicar">
+                    <i class="fa-regular fa-copy"></i>
+                </button>
+                <button type="button" class="btn-mini-danger" onclick="deleteSavedExam('${ex.id}')" title="Eliminar">
                     <i class="fa-regular fa-trash-can"></i>
                 </button>
             </div>
@@ -881,6 +1032,7 @@ function generateSimulatedStudentScan() {
 
 async function toggleCameraStream() {
     const video = document.getElementById('scannerVideo');
+    const canvas = document.getElementById('omrScannerCanvas');
     const guide = document.getElementById('cameraGuideOverlay');
     const btnCam = document.getElementById('uiBtnCameraToggle');
     const btnCap = document.getElementById('btnCaptureFrame');
@@ -897,6 +1049,7 @@ async function toggleCameraStream() {
         appState.scanner.stream = stream;
         video.srcObject = stream;
         video.classList.remove('hidden');
+        canvas.classList.add('hidden'); // <-- Oculta la imagen previa mientras apuntas con la cámara
         guide.classList.remove('hidden');
         btnCap.classList.remove('hidden');
         btnCam.textContent = t('btnCameraOff');
@@ -911,6 +1064,7 @@ function stopCameraStream() {
         appState.scanner.stream = null;
     }
     document.getElementById('scannerVideo')?.classList.add('hidden');
+    document.getElementById('omrScannerCanvas')?.classList.remove('hidden'); // <-- Vuelve a mostrar el lienzo con el resultado
     document.getElementById('cameraGuideOverlay')?.classList.add('hidden');
     document.getElementById('btnCaptureFrame')?.classList.add('hidden');
     const btnCam = document.getElementById('uiBtnCameraToggle');
@@ -1205,9 +1359,13 @@ function renderGradebookTable() {
         .filter(r => currentFilter === 'all' || r.examTitle === currentFilter)
         .filter(r => !searchVal || r.studentName.toLowerCase().includes(searchVal) || r.studentCode.toLowerCase().includes(searchVal));
 
+        // Tomar el porcentaje aprobatorio configurado globalmente (ej. 80%)
+    const minPassPct = Math.round(getGlobalPassingRatio() * 100);
+    updatePassingLabelsUI(minPassPct);
+
     const totalEval = filtered.length;
     const avgGrade = totalEval > 0 ? (filtered.reduce((acc, r) => acc + r.grade, 0) / totalEval) : 0;
-    const passCount = filtered.filter(r => r.percentage >= 60).length;
+    const passCount = filtered.filter(r => r.percentage >= minPassPct).length;
     const passRate = totalEval > 0 ? Math.round((passCount / totalEval) * 100) : 0;
     const bestGrade = totalEval > 0 ? Math.max(...filtered.map(r => r.grade)) : 0;
 
@@ -1223,7 +1381,7 @@ function renderGradebookTable() {
     }
 
     tbody.innerHTML = filtered.map((r, idx) => {
-        const badgeColor = r.percentage >= 60 ? 'text-emerald' : 'text-amber';
+        const badgeColor = r.percentage >= minPassPct ? 'text-emerald' : 'text-amber';
         return `
             <tr>
                 <td class="font-mono">${idx + 1}</td>
@@ -1243,9 +1401,53 @@ function renderGradebookTable() {
 }
 
 function deleteSingleResult(resId) {
-    appState.results = appState.results.filter(r => r.id !== resId);
-    saveResultsToStorage();
-    renderGradebookTable();
+    const record = appState.results.find(r => r.id === resId);
+    if (!record) return;
+
+    const isEn = appState.lang === 'en';
+    const titleText = isEn ? 'Delete student grade record?' : '¿Eliminar calificación del estudiante?';
+    const safeStudent = String(record.studentName || '').replace(/</g, '<').replace(/>/g, '>');
+    const safeExam = String(record.examTitle || '').replace(/</g, '<').replace(/>/g, '>');
+    const gradeStr = `${Number(record.grade || 0).toFixed(2)} / ${record.maxGrade}`;
+
+    const descHtml = isEn
+        ? `You are about to remove the grade record for <strong>${safeStudent}</strong> in <strong>${safeExam}</strong> (<strong>${gradeStr}</strong>).`
+        : `Se eliminará el registro de <strong>${safeStudent}</strong> en <strong>${safeExam}</strong> (nota: <strong>${gradeStr}</strong>).`;
+
+    const confirmBtnText = isEn ? 'Yes, delete record' : 'Sí, eliminar registro';
+    const toastMsg = isEn
+        ? `Grade record deleted for ${safeStudent}`
+        : `Calificación eliminada para ${safeStudent}`;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'upar-modal-overlay';
+    overlay.innerHTML = `
+        <div class="upar-modal-box">
+            <h3><i class="fa-solid fa-triangle-exclamation text-amber"></i> ${titleText}</h3>
+            <p>${descHtml}</p>
+            <div class="upar-modal-actions">
+                <button type="button" class="btn-utility" id="btnCancelDeleteSingleResult">
+                    ${t('btnImportCancel')}
+                </button>
+                <button type="button" class="btn-danger-sm" id="btnConfirmDeleteSingleResult">
+                    <i class="fa-regular fa-trash-can"></i> ${confirmBtnText}
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#btnCancelDeleteSingleResult').onclick = () => {
+        overlay.remove();
+    };
+
+    overlay.querySelector('#btnConfirmDeleteSingleResult').onclick = () => {
+        overlay.remove();
+        appState.results = appState.results.filter(r => r.id !== resId);
+        saveResultsToStorage();
+        renderGradebookTable();
+        showToast(toastMsg, 'fa-trash-can');
+    };
 }
 
 function clearGradebookForCurrentExam() {
@@ -1536,6 +1738,7 @@ function applyTranslations() {
     setText('uiBtnPrintTop', t('btnPrintTop'));
     setText('uiExamConfigTitle', t('examConfigTitle'));
     setText('uiBtnNewExam', t('btnNewExam'));
+    setText('uiBtnDuplicateExam', t('btnDuplicateExam'));
     setText('uiLabelExamTitle', t('labelExamTitle'));
     setText('uiBtnSaveExam', t('btnSaveExam'));
     setText('uiLabelCourse', t('labelCourse'));
@@ -1632,6 +1835,7 @@ function applyTranslations() {
     renderPrintableSheets();
     renderScannedAuditList();
     renderGradebookTable();
+    updatePassingLabelsUI(Math.round(getGlobalPassingRatio() * 100));
 }
 
 /* Exposición global explícita */
@@ -1639,6 +1843,8 @@ Object.assign(window, {
     switchView,
     printAnswerSheet,
     createNewBlankExam,
+    duplicateCurrentExam,
+    duplicateExamById,
     syncCurrentExamMeta,
     saveCurrentExam,
     handleQuestionCountChange,
@@ -1686,4 +1892,20 @@ window.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem(STORAGE_KEYS.LANG, appState.lang);
         applyTranslations();
     });
+});
+
+/* --- Receptor automático cuando corre dentro de UparApp Studio --- */
+if (window.self !== window.top || window.location.search.includes('suite=1')) {
+    const st = document.createElement('style');
+    st.textContent = `.brand-group, #appMainHeader .flex.items-center.gap-3:first-child, .app-header .header-top > div:first-child, #btnLangToggle, #btnThemeToggle, #langToggleBtn, #themeToggleBtn, footer, .app-footer, #appMainFooter { display: none !important; } .app-header .header-container, #appMainHeader > div { padding-top: 0.4rem !important; padding-bottom: 0.4rem !important; justify-content: center !important; } .subnav-bar { border-top: none !important; padding-top: 0 !important; }`;
+    document.head.appendChild(st);
+}
+window.addEventListener('message', (e) => {
+    if (e.data && e.data.type === 'UPAR_SUITE_SYNC') {
+        if (typeof appState === 'object') { appState.theme = e.data.theme; appState.lang = e.data.lang; }
+        if (typeof currentTheme !== 'undefined') currentTheme = e.data.theme;
+        if (typeof currentLang !== 'undefined') currentLang = e.data.lang;
+        if (typeof applyTheme === 'function') applyTheme();
+        if (typeof applyTranslations === 'function') applyTranslations();
+    }
 });

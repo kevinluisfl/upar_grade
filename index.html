@@ -60,24 +60,24 @@
             </div>
         </div>
 
-        <!-- Fila 2: Menú de las 4 Opciones debajo y centrado -->
+<!-- Fila 2: Menú de las 4 Opciones debajo y centrado -->
         <div class="subnav-bar">
             <nav class="nav-tabs">
-                <button class="nav-tab active" data-view="exams" onclick="switchView('exams')">
+                <button class="nav-tab active" data-view="exams" onclick="switchView('exams')" title="1. Examen y Clave">
                     <i class="fa-solid fa-sliders"></i>
-                    <span id="uiNavExams">1. Examen y Clave</span>
+                    <span id="uiNavExams" class="tab-label">1. Examen y Clave</span>
                 </button>
-                <button class="nav-tab" data-view="sheet" onclick="switchView('sheet')">
+                <button class="nav-tab" data-view="sheet" onclick="switchView('sheet')" title="2. Hoja ICFES">
                     <i class="fa-solid fa-file-lines"></i>
-                    <span id="uiNavSheet">2. Hoja ICFES</span>
+                    <span id="uiNavSheet" class="tab-label">2. Hoja ICFES</span>
                 </button>
-                <button class="nav-tab" data-view="scanner" onclick="switchView('scanner')">
+                <button class="nav-tab" data-view="scanner" onclick="switchView('scanner')" title="3. Escáner OMR">
                     <i class="fa-solid fa-camera"></i>
-                    <span id="uiNavScanner">3. Escáner OMR</span>
+                    <span id="uiNavScanner" class="tab-label">3. Escáner OMR</span>
                 </button>
-                <button class="nav-tab" data-view="results" onclick="switchView('results')">
+                <button class="nav-tab" data-view="results" onclick="switchView('results')" title="4. Calificaciones">
                     <i class="fa-solid fa-chart-column"></i>
-                    <span id="uiNavResults">4. Calificaciones</span>
+                    <span id="uiNavResults" class="tab-label">4. Calificaciones</span>
                 </button>
             </nav>
         </div>
@@ -96,9 +96,14 @@
                 <div class="studio-card">
                     <div class="card-section-header">
                         <h2><i class="fa-solid fa-file-signature text-indigo"></i> <span id="uiExamConfigTitle">Configuración del Examen</span></h2>
-                        <button class="btn-mini" onclick="createNewBlankExam()">
-                            <i class="fa-solid fa-plus"></i> <span id="uiBtnNewExam">Nuevo</span>
-                        </button>
+                        <div style="display: flex; gap: 0.4rem;">
+                            <button type="button" class="btn-mini" onclick="duplicateCurrentExam()" title="Duplicar examen actual">
+                                <i class="fa-regular fa-copy"></i> <span id="uiBtnDuplicateExam">Duplicar</span>
+                            </button>
+                            <button type="button" class="btn-mini" onclick="createNewBlankExam()">
+                                <i class="fa-solid fa-plus"></i> <span id="uiBtnNewExam">Nuevo</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -133,11 +138,11 @@
                     <div class="form-row-3">
                         <div class="form-group">
                             <label for="examMaxGrade" id="uiLabelMaxGrade">Nota Máxima</label>
-                            <input type="number" id="examMaxGrade" value="5.0" step="0.1" min="1" max="1000" oninput="syncCurrentExamMeta()">
+                            <input type="number" id="examMaxGrade" value="10.0" step="0.1" min="1" max="1000" oninput="syncCurrentExamMeta()">
                         </div>
                         <div class="form-group">
                             <label for="examMinGrade" id="uiLabelMinGrade">Nota Mínima</label>
-                            <input type="number" id="examMinGrade" value="1.0" step="0.1" min="0" max="100" oninput="syncCurrentExamMeta()">
+                            <input type="number" id="examMinGrade" value="0.0" step="0.1" min="0" max="100" oninput="syncCurrentExamMeta()">
                         </div>
                         <div class="form-group">
                             <label for="examOptionsCount" id="uiLabelOptionsCount">Opciones</label>
@@ -155,10 +160,17 @@
                             <span id="uiMetricValPerQ">Valor por cada acierto</span>
                             <strong id="metricPointsPerQuestion" class="font-mono text-indigo">+0.25 pts</strong>
                         </div>
-                        <div class="summary-metric">
+                        <!-- <div class="summary-metric">
                             <span id="uiMetricPassing">Nota aprobatoria (60%)</span>
                             <strong id="metricPassingGrade" class="font-mono text-emerald">3.00</strong>
+                        </div> -->
+                      <div class="summary-metric">
+                            <span style="display: inline-block; white-space: nowrap;">
+                                <span id="uiMetricPassing" style="display: inline;">Nota aprobatoria</span> (<span id="passingPctInput" contenteditable="true" spellcheck="false" title="Clic para editar porcentaje" style="display: inline;" oninput="onPassingPctChange(this.textContent)" onblur="updateExamMathSummary()" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">60</span>%)
+                            </span>
+                            <strong id="metricPassingGrade" class="font-mono text-emerald" contenteditable="true" spellcheck="false" title="Clic para editar nota aprobatoria" oninput="onPassingGradeChange(this.textContent)" onblur="updateExamMathSummary()" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">6.00</strong>
                         </div>
+
                         <div class="summary-metric">
                             <span id="uiMetricKeyStatus">Clave configurada</span>
                             <strong id="metricKeyProgress" class="font-mono">20 / 20</strong>
@@ -364,7 +376,7 @@
                     <div class="form-row-2">
                         <div class="form-group">
                             <label for="scannedStudentName" id="uiLabelStudentName">Nombre del Estudiante</label>
-                            <input type="text" id="scannedStudentName" placeholder="Ej. Caroll Cuero - 601">
+                            <input type="text" id="scannedStudentName" placeholder="Ej. Caroll Lopez - 601">
                         </div>
                         <div class="form-group">
                             <label for="scannedStudentId" id="uiLabelStudentCode">Código / Documento (Opcional)</label>
